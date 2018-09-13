@@ -1,41 +1,44 @@
 const express = require('express');
 const router = express.Router();
+const Netmask = require('netmask').Netmask;
 //const bcrypt = require('bcrypt');
 
 //get ipam schema model
 const ipam = require('../models/ipam');
 const User = require('../models/user');
 
-function allocateIP(network, count) {
-	/*
-	enter CIDR logic here
-	*/
+function allocateIP(network, cidr, count) {
+	var block = new Netmask(network.network_id + '/' + cidr);
 	//extract the first two sets of the ip xxx.xxx.
-	var networkPrefix = network.network_id.match(/\b\d{1,3}\.\d{1,3}\.\b/)[0];
-
+	console.log(block);
 	var availableIps = [];
+	var ipRange = [];
 
 	//iterate through all possible ips in the current network_id sequentially
-	for (var i = 0; i < 256; i++) {
-		for (var j = 1; j < 256; j++) {
-			var ipAvailableFlag = true;
-			//check if ip is taken
-			for (ipObj of network.ip_pool) {
-				if (ipObj.ipaddress == (networkPrefix + i + '.' + j)) {
-					ipAvailableFlag = false;
-					break;
-				}
-			}
-			//if ip is not already present in pool, store it
-			if (ipAvailableFlag) {
-				if (availableIps.length < count) {
-					availableIps.push(networkPrefix + i + '.' + j);
-				} else {
-					return availableIps;
-				}
+	block.forEach(blockIP => {
+		ipRange.push(blockIP);
+	});
+
+	for (index in ipRange) { 
+		var ipAvailableFlag = true;
+		//check if ip is taken
+		for (ipObj of network.ip_pool) {
+			if (ipObj.ipaddress == ipRange[index]) {
+				ipAvailableFlag = false;
+				break;
 			}
 		}
+		//if ip is not already present in pool, store it
+		if (ipAvailableFlag) {
+			if (availableIps.length < count) {
+				availableIps.push(ipRange[index]);
+			}
+			else
+				break;
+		}
 	}
+
+	return availableIps;
 }
 
 //fetch the user and his ips
@@ -45,11 +48,12 @@ router.get('/fetchUser', function (req, res) {
 	}, function (err, result) {
 		if (err)
 			throw err;
-		else
+		else {
 			res.json(result);
-		result.pool.forEach(pool => {
-			console.log(pool.ipaddress);
-		});
+			result.pool.forEach(pool => {
+				console.log(pool.ipaddress);
+			});
+		}
 
 	});
 });
@@ -62,13 +66,15 @@ router.post('/allocate', function (req, res) {
 		if (err) throw err;
 		else {
 			//get available ip list
-			var allocated_ips = allocateIP(result, req.body.count);
+			var allocated_ips = allocateIP(result, req.body.cidr, req.body.count);
+			console.log(allocated_ips + ' ' + req.body.cidr);
 			for (allocated_ip of allocated_ips) {
 				var ipamObj = {
 					ipaddress: allocated_ip,
 					hostname: "",
 					owner: req.body.username,
-					assigned: true
+					assigned: true,
+					cidr: req.body.cidr
 				}
 
 				var userObj = {
@@ -77,7 +83,8 @@ router.post('/allocate', function (req, res) {
 					subnet_mask: result.subnet_mask,
 					gateway: result.gateway,
 					dns: result.dns,
-					domain: result.domain
+					domain: result.domain,
+					cidr: req.body.cidr
 				}
 
 				//push the ips to current network document

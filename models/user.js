@@ -9,7 +9,8 @@ const ipList = new Schema({
     subnet_mask: String,
     gateway: String,
     dns: String,
-    domain: String
+    domain: String,
+    cidr: String
 });
 
 const UserSchema = new Schema({

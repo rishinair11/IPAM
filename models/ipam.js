@@ -16,6 +16,7 @@ const ipamSchema = new Schema({
     subnet_mask: String,
     dns: String,
     domain: String,
+    cidr: String,
     ip_pool : [ipPoolSchema]
 });
 
