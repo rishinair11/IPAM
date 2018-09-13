@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>IPAM Landing Page</title>
+</head>
+
+<body>
+    <form enctype="application/json" action="/api/allocate" method="post">
+        <label for="username">Username</label>
+        <input type="text" name="username">
+
+        <label for="network_id">Network ID</label>
+        <input type="text" name="network_id">
+
+        <label for="count">No.of instances</label>
+        <input type="text" name="count">
+
+        <input type="submit" value="Allocate">
+    </form>
+</body>
+
+</html>
